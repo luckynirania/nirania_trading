@@ -3,6 +3,14 @@ from django.forms import ValidationError
 from django.utils import timezone
 from django.db.models import JSONField
 from auditlog.registry import auditlog
+from .constants import (
+    ORDER_STATUS_CHOICES,
+    ORDER_TYPE_CHOICES,
+    IdeaStatusChoices,
+    OrderTypeChoices,
+    OrderStatusChoices,
+    IDEA_STATUS_CHOICES,
+)
 
 
 # Create Idea model
@@ -54,14 +62,7 @@ class IdeaStatus(models.Model):
     idea = models.OneToOneField(Idea, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=50,
-        choices=[
-            ("NEW", "New"),
-            ("BUY_ORDER_PLACED", "Buy Order Placed"),
-            ("BOUGHT", "Bought"),
-            ("SELL_GTT_ORDER_PLACED", "Sell GTT Order Placed"),
-            ("SOLD", "Sold and Closed"),
-            ("EXPIRED", "Idea was already Closed"),
-        ],
+        choices=IDEA_STATUS_CHOICES,
         default="NEW",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -80,27 +81,14 @@ class Order(models.Model):
         verbose_name="Idea Status ID",
     )
 
-    TYPE_CHOICES = [
-        ("SELL", "Sell"),
-        ("BUY", "Buy"),
-        ("GTT_SELL", "GTT Sell"),
-        ("GTT_BUY", "GTT Buy"),
-    ]
-
-    STATUS_CHOICES = [
-        ("PLACED", "Placed"),
-        ("CANCELLED", "Cancelled"),
-        ("EXECUTED", "Executed"),
-    ]
-
     exchange_order_id = models.CharField(
         max_length=255, verbose_name="Exchange Order ID"
     )
     order_type = models.CharField(
-        max_length=20, choices=TYPE_CHOICES, verbose_name="Order Type"
+        max_length=20, choices=ORDER_TYPE_CHOICES, verbose_name="Order Type"
     )
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, verbose_name="Status"
+        max_length=20, choices=ORDER_STATUS_CHOICES, verbose_name="Status"
     )
     price = models.FloatField(verbose_name="Price")
     quantity = models.IntegerField(verbose_name="Quantity")
@@ -113,26 +101,62 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         self.amount = self.price * self.quantity
-        if self.idea_status:
-            # Constraint for order_type='BUY' and status='PLACED'
-            if self.order_type == "BUY" and self.status == "PLACED":
-                if self.idea_status.status != "NEW":
-                    raise ValidationError(
-                        "Only IdeaStatus with status 'NEW' can have an order of type 'BUY' and status 'PLACED'"
-                    )
-                else:
-                    self.idea_status.status = "BUY_ORDER_PLACED"
-                    self.idea_status.save()
 
-            # Constraint for changing status from 'PLACED' to 'EXECUTED'
-            elif self.status == "EXECUTED":
-                if self.idea_status.status != "BUY_ORDER_PLACED":
+        if self.status not in [choice.name for choice in OrderStatusChoices]:
+            raise ValidationError("Invalid order status.")
+
+        if not self.pk:  # This is a new object
+            if self.status != OrderStatusChoices.PLACED.name:
+                raise ValidationError(
+                    f"New orders can only be created with status '{OrderStatusChoices.PLACED.value}'."
+                )
+
+            status_mapping = {
+                OrderTypeChoices.BUY.name: IdeaStatusChoices.BUY_ORDER_PLACED.name,
+                OrderTypeChoices.SELL.name: IdeaStatusChoices.SELL_ORDER_PLACED.name,
+                OrderTypeChoices.GTT_BUY.name: IdeaStatusChoices.BUY_GTT_ORDER_PLACED.name,
+                OrderTypeChoices.GTT_SELL.name: IdeaStatusChoices.SELL_GTT_ORDER_PLACED.name,
+            }
+
+            new_status = status_mapping.get(self.order_type)
+            if not new_status:
+                raise ValidationError("Invalid order type.")
+
+            if self.idea_status.status not in [
+                IdeaStatusChoices.NEW.name,
+                IdeaStatusChoices.BOUGHT.name,
+            ]:
+                raise ValidationError(
+                    f"IdeaStatus must be either '{IdeaStatusChoices.NEW.value}' or '{IdeaStatusChoices.BOUGHT.value}'."
+                )
+
+            self.idea_status.status = new_status
+            self.idea_status.save()
+
+        else:  # This is an existing object
+            if self.status == OrderStatusChoices.CANCELLED.name:
+                if OrderStatusChoices.PLACED.name not in self.idea_status.status:
                     raise ValidationError(
-                        "Only IdeaStatus with status 'BUY_ORDER_PLACED' can change to an order status of 'EXECUTED'"
+                        f"Only {OrderStatusChoices.PLACED.value} orders can be cancelled."
                     )
+
+                self.idea_status.status = self.idea_status.status.replace(
+                    OrderStatusChoices.PLACED.name, OrderStatusChoices.CANCELLED.name
+                )
+                self.idea_status.save()
+
+            elif self.status == OrderStatusChoices.EXECUTED.name:
+                if OrderStatusChoices.PLACED.name not in self.idea_status.status:
+                    raise ValidationError(
+                        f"Only {OrderStatusChoices.PLACED.value} orders can be executed."
+                    )
+
+                if OrderTypeChoices.BUY.name in self.idea_status.status:
+                    self.idea_status.status = IdeaStatusChoices.BOUGHT.name
                 else:
-                    self.idea_status.status = "BOUGHT"
-                    self.idea_status.save()
+                    self.idea_status.status = IdeaStatusChoices.SOLD.name
+
+                self.idea_status.save()
 
         super(Order, self).save(*args, **kwargs)
 
