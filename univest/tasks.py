@@ -1,6 +1,6 @@
 import time
 from opentelemetry import trace
-from univest.models import Idea
+from univest.models import Idea, IdeaStatus
 from utils.tracing_utils import request_with_trace
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 from datetime import datetime
@@ -23,13 +23,17 @@ def call_google():
 def loop_univest_fetch(times: int, delay: int):
     tracer = trace.get_tracer(__name__)
     with tracer.start_as_current_span("loop_univest_fetch") as log:
-        log.add_event(f"begin the loop for {times} times and delay = {delay} secs")
-        for i in range(times):
+        log.add_event(f"begin the loop for {times - 1} times and delay = {delay} secs")
+        for i in range(times - 1):
             log.add_event(
                 f"iteration {i + 1} begin, calling fetch_and_store_ideas_from_univest_api"
             )
             start_time = datetime.now()
             fetch_and_store_ideas_from_univest_api()
+
+            log.add_event("populate idea statuses and buy short term new ideas")
+            populate_idea_statuses()
+            buy_new_ideas(term="SHORT")
 
             end_time = datetime.now()
             time_elapsed = (end_time - start_time).total_seconds()
@@ -41,6 +45,11 @@ def loop_univest_fetch(times: int, delay: int):
         log.add_event("end loop")
         log.add_event("calling fetch_and_store_ideas_from_univest_api last time")
         fetch_and_store_ideas_from_univest_api()
+
+        log.add_event("populate idea statuses and buy short term new ideas")
+        populate_idea_statuses()
+        buy_new_ideas(term="SHORT")
+
         log.add_event("all calls completed, exiting ...")
 
 
@@ -102,3 +111,43 @@ def fetch_and_store_ideas_from_univest_api():
                         "netGain": item.get("netGain"),
                     },
                 )
+
+
+def populate_idea_statuses():
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("populate_idea_statuses") as log:
+        log.add_event("begin adding new idea into idea status table")
+        # First, populate the IdeaStatus table with status "NEW" for all ideas
+        for idea in Idea.objects.all():
+            IdeaStatus.objects.get_or_create(
+                idea=idea,
+                defaults={
+                    "status": "NEW",
+                },
+            )
+        log.add_event("addition completed, identifying expired ideas")
+
+        expired_ideas = Idea.objects.exclude(status="OPEN")
+        for idea_status in IdeaStatus.objects.filter(
+            idea__in=expired_ideas, order__isnull=True, status="NEW"
+        ):
+            idea_status.status = "EXPIRED"
+            idea_status.save()
+
+        log.add_event("filtered expired ideas and marked")
+
+
+def buy_new_ideas(term):
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("buy_new_ideas") as log:
+        log.add_event(f"begin buying ideas which are NEW for term = {term}")
+        # Query IdeaStatus objects where status is 'NEW' and related Idea has the specified term
+        new_ideas = IdeaStatus.objects.filter(status="NEW", idea__term=term)
+
+        # Iterate over the filtered IdeaStatus objects and print them
+        for idea_status in new_ideas:
+            log.add_event(
+                f"IdeaStatus ID: {idea_status.id}, Related Idea: {idea_status.idea.stockName}, Status: {idea_status.status}"
+            )
+
+        log.add_event("buy orders placed")
