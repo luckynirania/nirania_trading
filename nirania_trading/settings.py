@@ -119,20 +119,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 Q_CLUSTER = {
-    "name": "nirania-cluster",  # Name of the cluster, useful when running multiple clusters
-    "workers": 10,  # Number of worker processes
-    "timeout": 90,  # Timeout for successfully completed tasks, in seconds
-    "retry": 120,  # Retry time for failed tasks, in seconds
-    "queue_limit": 100,  # Maximum number of tasks per queue
-    "bulk": 10,  # Number of tasks to read from Redis at once
-    "orm": "default",  # Django database to use, you can also use an external Redis
-    "sync": False,  # Run synchronous (for debugging)
-    "ack_failures": True,  # Acknowledge tasks that fail, so they don't get retried
-    "save_limit": 250,  # Number of successful tasks to keep in the database
-    "catch_up": False,  # Don't catch up if the broker was down for some time
+    "name": "nirania-cluster",
+    "workers": 10,
+    "timeout": 90,
+    "retry": 120,
+    "queue_limit": 100,
+    "bulk": 10,
+    "orm": "default",
+    "sync": False,
+    "ack_failures": True,
+    "save_limit": 250,
+    "catch_up": False,
     "redis": {
-        "host": "localhost",  # Redis server address
-        "port": 6379,  # Redis port number
-        "db": 0,  # Database number, default is 0
+        "host": "localhost",
+        "port": 6379,
+        "db": 0,
     },
 }
