@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "univest",
     "auditlog",
     "django_q",
+    "rest_framework",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -38,9 +40,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "auditlog.middleware.AuditlogMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "nirania_trading.urls"
+CORS_ALLOW_ALL_ORIGINS = True
 
 TEMPLATES = [
     {

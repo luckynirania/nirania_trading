@@ -33,7 +33,7 @@ def loop_univest_fetch(times: int, delay: int):
 
             log.add_event("populate idea statuses and buy short term new ideas")
             populate_idea_statuses()
-            buy_new_ideas(term="SHORT")
+            place_market_buy_order_for_new_ideas(term="SHORT")
 
             end_time = datetime.now()
             time_elapsed = (end_time - start_time).total_seconds()
@@ -48,7 +48,7 @@ def loop_univest_fetch(times: int, delay: int):
 
         log.add_event("populate idea statuses and buy short term new ideas")
         populate_idea_statuses()
-        buy_new_ideas(term="SHORT")
+        place_market_buy_order_for_new_ideas(term="SHORT")
 
         log.add_event("all calls completed, exiting ...")
 
@@ -137,9 +137,9 @@ def populate_idea_statuses():
         log.add_event("filtered expired ideas and marked")
 
 
-def buy_new_ideas(term):
+def place_market_buy_order_for_new_ideas(term):
     tracer = trace.get_tracer(__name__)
-    with tracer.start_as_current_span("buy_new_ideas") as log:
+    with tracer.start_as_current_span("place_market_buy_order_for_new_ideas") as log:
         log.add_event(f"begin buying ideas which are NEW for term = {term}")
         # Query IdeaStatus objects where status is 'NEW' and related Idea has the specified term
         new_ideas = IdeaStatus.objects.filter(status="NEW", idea__term=term)
@@ -150,4 +150,4 @@ def buy_new_ideas(term):
                 f"IdeaStatus ID: {idea_status.id}, Related Idea: {idea_status.idea.stockName}, Status: {idea_status.status}"
             )
 
-        log.add_event("buy orders placed")
+        log.add_event("market buy orders placed successfully")

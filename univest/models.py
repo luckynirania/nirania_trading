@@ -6,6 +6,7 @@ from auditlog.registry import auditlog
 from .constants import (
     ORDER_STATUS_CHOICES,
     ORDER_TYPE_CHOICES,
+    ORDER_SUB_TYPE_CHOICES,
     IdeaStatusChoices,
     OrderTypeChoices,
     OrderStatusChoices,
@@ -87,6 +88,9 @@ class Order(models.Model):
     order_type = models.CharField(
         max_length=20, choices=ORDER_TYPE_CHOICES, verbose_name="Order Type"
     )
+    order_sub_type = models.CharField(
+        max_length=20, choices=ORDER_SUB_TYPE_CHOICES, verbose_name="Order Sub Type"
+    )
     status = models.CharField(
         max_length=20, choices=ORDER_STATUS_CHOICES, verbose_name="Status"
     )
@@ -114,8 +118,6 @@ class Order(models.Model):
             status_mapping = {
                 OrderTypeChoices.BUY.name: IdeaStatusChoices.BUY_ORDER_PLACED.name,
                 OrderTypeChoices.SELL.name: IdeaStatusChoices.SELL_ORDER_PLACED.name,
-                OrderTypeChoices.GTT_BUY.name: IdeaStatusChoices.BUY_GTT_ORDER_PLACED.name,
-                OrderTypeChoices.GTT_SELL.name: IdeaStatusChoices.SELL_GTT_ORDER_PLACED.name,
             }
 
             new_status = status_mapping.get(self.order_type)
