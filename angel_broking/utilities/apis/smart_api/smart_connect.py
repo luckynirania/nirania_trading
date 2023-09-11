@@ -124,25 +124,27 @@ class SmartConnect(object):
         # disable requests SSL warning
         requests.packages.urllib3.disable_warnings()
 
-    def requestHeaders(self):
-        headers = {
-            "Content-type": self.accept,
-            "X-ClientLocalIP": self.clientLocalIp,
-            "X-ClientPublicIP": self.clientPublicIp,
-            "X-MACAddress": self.clientMacAddress,
-            "Accept": self.accept,
-            "X-PrivateKey": self.privateKey,
-            "X-UserType": self.userType,
-            "X-SourceID": self.sourceID,
-        }
+    def requestHeaders(self, only_auth=False):
+        if not only_auth:
+            headers = {
+                "Content-type": self.accept,
+                "X-ClientLocalIP": self.clientLocalIp,
+                "X-ClientPublicIP": self.clientPublicIp,
+                "X-MACAddress": self.clientMacAddress,
+                "Accept": self.accept,
+                "X-PrivateKey": self.privateKey,
+                "X-UserType": self.userType,
+                "X-SourceID": self.sourceID,
+                "X-Order-Uniqueno": str(uuid.uuid4()),
+            }
+        else:
+            headers = {}
 
-        if self.access_token:
+        if self.access_token and not only_auth:
             headers["accesstoken"] = self.access_token
 
         if self.bearer_token:
             headers["Authorization"] = "Bearer {}".format(self.bearer_token)
-
-        headers["X-Order-Uniqueno"] = str(uuid.uuid4())
 
         return headers
 
@@ -176,7 +178,7 @@ class SmartConnect(object):
         """Get the remote login url to which a user should be redirected to initiate the login flow."""
         return "%s?api_key=%s" % (self._login_url, self.api_key)
 
-    def _request(self, route, method, parameters=None, root=None):
+    def _request(self, route, method, parameters=None, root=None, only_auth=False):
         """Make an HTTP request."""
         params = parameters.copy() if parameters else {}
 
@@ -187,13 +189,7 @@ class SmartConnect(object):
             url = urljoin(self.root, uri)
 
         # Custom headers
-        headers = self.requestHeaders()
-
-        if self.access_token:
-            headers["accesstoken"] = self.access_token
-
-        if self.bearer_token:
-            headers["Authorization"] = "Bearer {}".format(self.bearer_token)
+        headers = self.requestHeaders(only_auth)
 
         if self.debug:
             log.debug(
@@ -201,8 +197,6 @@ class SmartConnect(object):
                     method=method, url=url, params=params, headers=headers
                 )
             )
-
-        headers["X-Order-Uniqueno"] = str(uuid.uuid4())
 
         try:
             r = request_with_trace(
@@ -278,9 +272,9 @@ class SmartConnect(object):
         """Alias for sending a POST request."""
         return self._request(route, "POST", params, root=root)
 
-    def _getRequest(self, route, params=None, root=None):
+    def _getRequest(self, route, params=None, root=None, only_auth=False):
         """Alias for sending a GET request."""
-        return self._request(route, "GET", params, root=root)
+        return self._request(route, "GET", params, root=root, only_auth=only_auth)
 
     def generateSession(self, clientCode, password, totp):
         params = {"clientcode": clientCode, "password": password, "totp": totp}
@@ -474,7 +468,7 @@ class SmartConnect(object):
 
     def orderBookCustom(self):
         orderBookResponse = self._getRequest(
-            "angel.order.book", root=self._angelTradeUrl
+            "angel.order.book", root=self._angelTradeUrl, only_auth=True
         )
         return orderBookResponse
 

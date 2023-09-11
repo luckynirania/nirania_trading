@@ -19,6 +19,7 @@ class OrderStatusChoices(Enum):
     PLACED = "Placed"
     CANCELLED = "Cancelled"
     EXECUTED = "Executed"
+    REJECTED = "Rejected"
 
 
 class IdeaStatusChoices(Enum):
