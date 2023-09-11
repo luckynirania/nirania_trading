@@ -64,7 +64,7 @@ class IdeaStatus(models.Model):
     status = models.CharField(
         max_length=50,
         choices=IDEA_STATUS_CHOICES,
-        default="NEW",
+        default=IdeaStatusChoices.NEW.name,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -86,10 +86,16 @@ class Order(models.Model):
         max_length=255, verbose_name="Exchange Order ID"
     )
     order_type = models.CharField(
-        max_length=20, choices=ORDER_TYPE_CHOICES, verbose_name="Order Type"
+        max_length=20,
+        choices=ORDER_TYPE_CHOICES,
+        verbose_name="Order Type",
+        blank=True,
     )
     order_sub_type = models.CharField(
-        max_length=20, choices=ORDER_SUB_TYPE_CHOICES, verbose_name="Order Sub Type"
+        max_length=20,
+        choices=ORDER_SUB_TYPE_CHOICES,
+        verbose_name="Order Sub Type",
+        blank=True,
     )
     status = models.CharField(
         max_length=20, choices=ORDER_STATUS_CHOICES, verbose_name="Status"

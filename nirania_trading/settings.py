@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "univest",
+    "angel_broking",
     "auditlog",
     "django_q",
     "rest_framework",
